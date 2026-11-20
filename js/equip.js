@@ -8,7 +8,7 @@ export const IMPL_TYPES = {
 
 export const DEFAULT_EQUIPMENT = {
   implements: [
-    { id: 'khA', type: 'kh', n: 'Kurzhantel Typ A', count: 2, base: 2, maxLoad: 10, accepts: ['A', 'B', '5er'], on: true },
+    { id: 'khA', type: 'kh', n: 'Kurzhantel Typ A', count: 2, base: 2, maxLoad: 20, accepts: ['A', 'B', '5er'], on: true },
     { id: 'khB', type: 'kh', n: 'Kurzhantel Typ B', count: 1, base: 2, maxLoad: 7.5, accepts: ['B'], on: true },
     { id: 'sz', type: 'sz', n: 'SZ-Stange', count: 1, base: 6, accepts: ['A', 'B', '5er', '10er'], on: true },
     { id: 'kb', type: 'kb', n: 'Kettlebell (verstellbar)', count: 1, base: 12, maxLoad: 12.5, accepts: ['A', 'B'], on: true },

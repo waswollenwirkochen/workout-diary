@@ -16,6 +16,9 @@ function migrate(s) {
   const e = emptyState();
   s.equipment = s.equipment || e.equipment;
   s.settings = { ...e.settings, ...(s.settings || {}) };
+  // Update: KH Typ A trägt bis 20 kg (2× 5er + Rest) – nur wenn das Equipment noch nie bearbeitet wurde
+  const khA = s.equipment.implements?.find(i => i.id === 'khA');
+  if (khA && khA.maxLoad === 10 && !s.equipment.updatedAt) khA.maxLoad = 20;
   return s;
 }
 export function saveLocal(state) {

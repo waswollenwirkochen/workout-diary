@@ -610,4 +610,7 @@ document.addEventListener('change', ev => {
 // Start
 render();
 if (syncCfg().token) doSync();
+// Nachholen, sobald wieder Netz da ist oder die App wieder in den Vordergrund kommt
+window.addEventListener('online', () => scheduleSync(500));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') scheduleSync(500); });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => { });
