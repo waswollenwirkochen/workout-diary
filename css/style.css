@@ -194,3 +194,5 @@ nav.tabs button.on.t-duo { color: var(--jenny); }
 .empty { text-align: center; color: var(--tx3); padding: 30px 10px; }
 
 .bopt { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.timebtn { height: 40px; border-color: #ff6a2b77; color: var(--ember2); font-variant-numeric: tabular-nums; }
+.timebtn.j { border-color: #c79bff77; color: var(--jenny); }

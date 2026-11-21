@@ -316,6 +316,7 @@ function personCtrls(e, b, bi, ii, who, p) {
   else if (p.reps != null) {
     const u = ex.u === 's' ? 's' : ex.u === 'm' ? 'm' : 'Wdh.';
     out += stepper('reps', `${p.reps}<small>${u}${ex.side ? '/Seite' : ''}</small>`, attrs, who === 'j' ? 'j' : '');
+    if (ex.u === 's') out += `<button class="btn sm timebtn ${who === 'j' ? 'j' : ''}" data-a="extimer" ${attrs}>▶ ${p.reps} s${ex.side ? ' ×2' : ''}</button>`;
     out += `<button class="chip small ${p.rr ? 'on' : ''}" data-a="rr" ${attrs}>je Runde</button>`;
   }
   out += '</div>';
@@ -581,6 +582,16 @@ document.addEventListener('click', ev => {
           if (last && r + 1 < b.rounds && e.hiit.roundPause) ph.push({ label: 'Rundenpause', what: nm(items[0]), sec: e.hiit.roundPause, kind: 'rest' });
         });
         runTimer(ph, { title: 'HIIT' });
+        return;
+      }
+      case 'extimer': {
+        const p = person(); const ex = EX[p.ex];
+        const sec = p.reps;
+        const name = ex.n + (e.duo ? (x.who === 'j' ? ' · Jenny' : ' · Eric') : '');
+        const ph = [{ label: 'Gleich geht\u2019s los', what: name, sec: 5, kind: 'rest' }];
+        if (ex.side) ph.push({ label: 'Seite 1', what: name, next: 'Seitenwechsel', sec, kind: 'work' }, { label: 'Seitenwechsel', what: name, sec: 5, kind: 'rest' }, { label: 'Seite 2', what: name, sec, kind: 'work' });
+        else ph.push({ label: 'Halten', what: name, sec, kind: 'work' });
+        runTimer(ph, { title: ex.n });
         return;
       }
       case 'pause': countdown('Pause', FORMATS[e.format].pause, 'Durchatmen – nächste Runde'); return;
