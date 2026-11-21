@@ -2,6 +2,7 @@ import { EX, EXERCISES, PATTERNS, MAIN_PATTERNS, REGIONS, VARIANTS, AVAIL, ZONES
 import { IMPL_TYPES, variantPossible, isLoaded, weightOptions, stepOption, nearestOption, plateText, blockFeasible, fmtKg, clearCache, DEFAULT_EQUIPMENT } from './equip.js';
 import { buildPlan, suggestFormat, todaySummary, zoneStatus, glow, agoText, lastPerf, lastVariant, makePerson, doneEntries, progression } from './plan.js';
 import { bodySVG, paintBody } from './body.js';
+import { DETAILS, DEFAULT_BREATH } from './details.js';
 import { load, saveLocal, syncCfg, setSyncCfg, sync, merge } from './store.js';
 import { runTimer, countdown } from './timer.js';
 
@@ -226,12 +227,12 @@ function renderBlock(e, b, bi) {
     ${loaded ? `<span class="badge ${feas.ok ? 'ok' : 'warn'}">${feas.ok ? '✓ Scheiben' : '⚠ Umbau'}</span>` : ''}
     <button class="iconbtn" data-a="blockdel" data-bi="${bi}" title="Set löschen">✕</button></div>`;
   if (F.timed && e.hiit) {
-    out += `<div class="ex"><div class="ctrls">${stepper('hiitw', `${e.hiit.work}<small>s Arbeit</small>`)}${stepper('hiitr', `${e.hiit.rest}<small>s Pause</small>`)}${stepper('hiitrp', `${e.hiit.roundPause}<small>s zw. Runden</small>`)}</div>
+    out += `<div class="bopt"><div class="ctrls">${stepper('hiitw', `${e.hiit.work}<small>s Arbeit</small>`)}${stepper('hiitr', `${e.hiit.rest}<small>s Pause</small>`)}${stepper('hiitrp', `${e.hiit.roundPause}<small>s zw. Runden</small>`)}</div>
       <button class="btn primary block" style="margin-top:10px" data-a="hiitstart" data-bi="${bi}">▶ Zirkel-Timer starten</button></div>`;
   }
   if (e.format === 'kb') {
     const opts = weightOptions(eqp(), 'kb');
-    out += `<div class="ex"><div class="row"><div class="grow"><b>KB-Gewicht für den ganzen Circuit</b><div class="dim">einarmig sauber machbar, zweiarmig nicht zu leicht</div></div>${stepper('kbw', `${num(b.kbWeight ?? opts[0])}<small>kg</small>`, `data-bi="${bi}"`, b.kbProg ? 'up' : '')}</div>
+    out += `<div class="bopt"><div class="row"><div class="grow"><b>KB-Gewicht für den ganzen Circuit</b><div class="dim">einarmig sauber machbar, zweiarmig nicht zu leicht</div></div>${stepper('kbw', `${num(b.kbWeight ?? opts[0])}<small>kg</small>`, `data-bi="${bi}"`, b.kbProg ? 'up' : '')}</div>
       ${b.kbProg ? `<div class="prog">↑ Steigerung: letztes Mal alle Wdh. geschafft mit ${num(b.kbProg.from)} kg</div>` : ''}
       <div class="plates">${plateText(eqp(), 'kb', b.kbWeight)}</div></div>`;
   }
@@ -240,27 +241,62 @@ function renderBlock(e, b, bi) {
   return out;
 }
 
+function tipsHtml(ex, key) {
+  const open = ui.more.has(key);
+  const dos = open ? ex.do : ex.do.slice(0, 2);
+  return `<div class="tips">${dos.map(t => `<div class="d">${esc(t)}</div>`).join('')}${ex.dont.map(t => `<div class="x">${esc(t)}</div>`).join('')}
+    ${open && ex.easy ? `<div class="dim">Leichter: ${esc(ex.easy)} · Schwerer: ${esc(ex.hard || '–')}</div>` : ''}
+    ${(ex.do.length > 2 || ex.easy) ? `<button class="more" data-a="more" data-k="${key}">${open ? 'weniger' : 'mehr …'}</button>` : ''}</div>`;
+}
+const infoBtn = id => `<button class="infobtn" data-a="info" data-id="${id}" title="Übung erklärt" aria-label="Übung erklärt">i</button>`;
+
 function renderItem(e, b, bi, it, ii) {
   const ex = EX[it.e.ex];
   const key = `${e.id}-${bi}-${ii}`;
-  let out = `<div class="ex"><div class="pat">${PATTERNS[ex.p].n}${ex.side ? ' · pro Seite' : ''}${ex.partner ? ' · Partner' : ''}</div>
+  let out = `<div class="ex"><div class="exhead"><span class="exnum">${bi + 1}.${ii + 1}</span><span class="pat">${PATTERNS[ex.p].n}${ex.side ? ' · pro Seite' : ''}${ex.partner ? ' · Partner' : ''}</span></div>
     <div class="exname"><button class="n" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="e">${esc(ex.n)}${ex.star ? ' <span style="color:var(--ember2)">★</span>' : ''}</button>
-    <button class="iconbtn" data-a="exdel" data-bi="${bi}" data-ii="${ii}" title="Entfernen">✕</button></div>`;
-  out += personCtrls(e, b, bi, ii, 'e', it.e);
-  if (e.duo && it.j) {
-    const jx = EX[it.j.ex];
-    out += `<div class="duo-alt">${it.j.ex !== it.e.ex ? `<div class="exname"><button class="n" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j" style="font-size:14.5px;color:var(--jenny)">Jenny: ${esc(jx.n)}</button></div>` : `<button class="dim" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j">Jenny: andere Übung wählen ▾</button>`}
-      ${personCtrls(e, b, bi, ii, 'j', it.j)}
-      ${ui.tips && it.j.ex !== it.e.ex ? `<div class="tips">${jx.do.slice(0, 2).map(t => `<div class="d">${esc(t)}</div>`).join('')}${jx.dont.map(t => `<div class="x">${esc(t)}</div>`).join('')}</div>` : ''}</div>`;
-  } else if (e.duo) out += `<div class="duo-alt"><button class="btn sm ghost" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j">+ Übung für Jenny</button></div>`;
-  if (ui.tips) {
-    const open = ui.more.has(key);
-    const dos = open ? ex.do : ex.do.slice(0, 2);
-    out += `<div class="tips">${dos.map(t => `<div class="d">${esc(t)}</div>`).join('')}${ex.dont.map(t => `<div class="x">${esc(t)}</div>`).join('')}
-      ${open && ex.easy ? `<div class="dim">Leichter: ${esc(ex.easy)} · Schwerer: ${esc(ex.hard || '–')}</div>` : ''}
-      ${(ex.do.length > 2 || ex.easy) ? `<button class="more" data-a="more" data-k="${key}">${open ? 'weniger' : 'mehr …'}</button>` : ''}</div>`;
+    ${infoBtn(ex.id)}<button class="iconbtn" data-a="exdel" data-bi="${bi}" data-ii="${ii}" title="Entfernen">✕</button></div>`;
+  if (!e.duo) {
+    out += personCtrls(e, b, bi, ii, 'e', it.e);
+    if (ui.tips) out += tipsHtml(ex, key);
+    return out + '</div>';
   }
+  const diff = it.j && it.j.ex !== it.e.ex;
+  out += `<div class="pp e"><div class="pph">Eric</div>${personCtrls(e, b, bi, ii, 'e', it.e)}${ui.tips && diff ? tipsHtml(ex, key) : ''}</div>`;
+  if (it.j) {
+    const jx = EX[it.j.ex];
+    out += `<div class="pp j"><div class="pph">Jenny${diff ? '' : ` <button class="swap" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j">andere Übung ▾</button>`}</div>
+      ${diff ? `<div class="exname"><button class="n jn" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j">${esc(jx.n)}</button>${infoBtn(jx.id)}</div>` : ''}
+      ${personCtrls(e, b, bi, ii, 'j', it.j)}
+      ${ui.tips && diff ? tipsHtml(jx, key + '-j') : ''}</div>`;
+  } else out += `<div class="pp j"><div class="pph">Jenny</div><button class="btn sm ghost" data-a="pick" data-bi="${bi}" data-ii="${ii}" data-who="j" style="width:100%">+ Übung für Jenny</button></div>`;
+  if (ui.tips && !diff) out += tipsHtml(ex, key);
   return out + '</div>';
+}
+
+// ── Info-Sheet ───────────────────────────────────────────
+function openInfo(id) {
+  const ex = EX[id], d = DETAILS[id] || {};
+  const prim = Object.keys(ex.m).filter(z => ex.m[z] >= 1), sec = Object.keys(ex.m).filter(z => ex.m[z] < 1);
+  const vs = ex.v.map(v => VARIANTS[v].n + (v === 'bw' && ex.av ? ` (${AVAIL[ex.av]})` : '') + (variantPossible(eqp(), v) ? '' : ' (fehlt)'));
+  const el = document.createElement('div');
+  el.className = 'sheet-bg info'; el.dataset.a = 'infobg';
+  el.innerHTML = `<div class="sheet"><div class="sh"><div class="grab"></div>
+    <div class="row"><div class="grow"><div class="pat">${PATTERNS[ex.p].n}${ex.side ? ' · pro Seite' : ''}${ex.partner ? ' · Partnerübung' : ''}</div><b style="font-size:19px">${esc(ex.n)}${ex.star ? ' <span style="color:var(--ember2)">★</span>' : ''}</b></div><button class="iconbtn" data-a="infoclose">✕</button></div></div>
+    <div class="sb">
+      <div class="infobody">${bodySVG()}</div>
+      <div class="chips" style="justify-content:center;margin:4px 0 10px">${prim.map(z => `<span class="chip small on">${ZONES[z]}</span>`).join('')}${sec.map(z => `<span class="chip small">${ZONES[z]}</span>`).join('')}</div>
+      <div class="dim" style="text-align:center;margin-bottom:6px">Geräte: ${esc(vs.join(' · '))}</div>
+      ${d.s ? `<h3>Ausgangsposition</h3><p>${esc(d.s)}</p>` : ''}
+      ${d.x ? `<h3>Ablauf</h3><ol class="steps">${d.x.map(t => `<li>${esc(t)}</li>`).join('')}</ol>` : ''}
+      <h3>Atmung</h3><p>${esc(d.b || DEFAULT_BREATH)}</p>
+      ${d.f ? `<h3>Hier solltest du es spüren</h3><p>${esc(d.f)}</p>` : ''}
+      <h3>Do's &amp; Don'ts</h3><div class="tips" style="font-size:14.5px">${ex.do.map(t => `<div class="d">${esc(t)}</div>`).join('')}${ex.dont.map(t => `<div class="x">${esc(t)}</div>`).join('')}</div>
+      ${ex.easy || ex.hard ? `<h3>Anpassen</h3><p><b>Leichter:</b> ${esc(ex.easy || '–')}<br><b>Schwerer:</b> ${esc(ex.hard || '–')}</p>` : ''}
+      <div style="height:16px"></div></div></div>`;
+  document.body.appendChild(el);
+  const g = {}; for (const [z, f] of Object.entries(ex.m)) g[z] = f >= 1 ? 1 : 0.45;
+  paintBody($('svg.body', el), g);
 }
 
 function personCtrls(e, b, bi, ii, who, p) {
@@ -268,7 +304,6 @@ function personCtrls(e, b, bi, ii, who, p) {
   const attrs = `data-bi="${bi}" data-ii="${ii}" data-who="${who}"`;
   const vs = ex.v.filter(v => variantPossible(eqp(), v) && (e.mode !== 'travel' || v === 'bw'));
   let out = '<div class="ctrls">';
-  if (e.duo) out += `<span class="who ${who}">${who === 'e' ? 'E' : 'J'}</span>`;
   if (vs.length > 1) out += vs.map(v => `<button class="chip small ${p.v === v ? 'on' : ''}" data-a="var" data-v="${v}" ${attrs}>${VARIANTS[v].n}</button>`).join('');
   else out += `<span class="dim">${VARIANTS[p.v]?.n || ''}${ex.av && p.v === 'bw' ? ' · ' + AVAIL[ex.av] : ''}</span>`;
   out += '</div><div class="ctrls">';
@@ -325,7 +360,7 @@ function renderSheet() {
   if (fresh) { el = document.createElement('div'); el.className = 'sheet-bg'; el.dataset.a = 'sheetbg'; document.body.appendChild(el); }
   const groups = sheetList(e, sh);
   const chips = [['recent', 'Zuletzt'], ...Object.entries(REGIONS).map(([k, n]) => ['r:' + k, n]), ['all', 'Alle']];
-  const body = groups.map(([n, xs]) => `<div class="grp">${n}</div>${xs.length ? xs.map(x => `<button class="pick" data-a="pickx" data-id="${x.id}"><span><b>${esc(x.n)}</b>${x.star ? ' <span style="color:var(--ember2)">★</span>' : ''}<br><span class="m">${Object.keys(x.m).filter(z => x.m[z] >= 1).map(z => ZONES[z]).join(', ')}</span></span><span class="ic">${x.v.filter(v => variantPossible(eqp(), v)).map(v => VARIANTS[v].n === 'ohne Gerät' ? 'KG' : v.toUpperCase().replace('KH1', 'KH').replace('KH2', '2KH')).join(' · ')}</span></button>`).join('') : '<div class="dim" style="padding:10px 0">Noch nichts hier.</div>'}`).join('');
+  const body = groups.map(([n, xs]) => `<div class="grp">${n}</div>${xs.length ? xs.map(x => `<div class="pickrow"><button class="pick" data-a="pickx" data-id="${x.id}"><span><b>${esc(x.n)}</b>${x.star ? ' <span style="color:var(--ember2)">★</span>' : ''}<br><span class="m">${Object.keys(x.m).filter(z => x.m[z] >= 1).map(z => ZONES[z]).join(', ')}</span></span><span class="ic">${x.v.filter(v => variantPossible(eqp(), v)).map(v => VARIANTS[v].n === 'ohne Gerät' ? 'KG' : v.toUpperCase().replace('KH1', 'KH').replace('KH2', '2KH')).join(' · ')}</span></button>${infoBtn(x.id)}</div>`).join('') : '<div class="dim" style="padding:10px 0">Noch nichts hier.</div>'}`).join('');
   if (fresh) {
     el.innerHTML = `<div class="sheet"><div class="sh"><div class="grab"></div>
       <div class="row"><b class="grow">${sh.who === 'j' ? 'Übung für Jenny' : sh.ii == null ? 'Übung hinzufügen' : 'Übung wählen'}</b><button class="iconbtn" data-a="sheetclose">✕</button></div>
@@ -465,6 +500,9 @@ document.addEventListener('click', ev => {
   }
   const a = el.dataset.a, x = P(el);
   if (a === 'sheetbg') { if (ev.target === el) closeSheet(); return; }
+  if (a === 'infobg') { if (ev.target === el) el.remove(); return; }
+  if (a === 'infoclose') { el.closest('.sheet-bg')?.remove(); return; }
+  if (a === 'info') { openInfo(x.id); return; }
   const e = ui.view === 'edit' ? entry(ui.editId) : null;
   const person = () => e.blocks[x.bi].items[x.ii][x.who];
 
