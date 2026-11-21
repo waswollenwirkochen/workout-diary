@@ -609,7 +609,9 @@ document.addEventListener('click', ev => {
         S.settings.rope = e.warmup.min || S.settings.rope;
         persist(); ui.view = e.duo ? 'duo' : 'start'; ui.editId = null; render(); scrollTo(0, 0); toast('Training gespeichert 💪'); return;
       }
-      case 'discard': if (!confirm('Training verwerfen?')) return; S.entries = S.entries.filter(z => z.id !== e.id); persist(); ui.view = e.duo ? 'duo' : 'start'; ui.editId = null; render(); return;
+      case 'discard': if (!confirm('Training verwerfen?')) return;
+        // Als gelöscht markieren statt entfernen – sonst holt der Sync den Entwurf aus GitHub zurück
+        e.deleted = true; e.blocks = []; e.updatedAt = Date.now(); persist(); ui.view = e.duo ? 'duo' : 'start'; ui.editId = null; render(); return;
       case 'delete': if (!confirm('Eintrag endgültig löschen?')) return; e.deleted = true; e.blocks = []; e.updatedAt = Date.now(); persist(); ui.view = 'hist'; ui.editId = null; render(); return;
     }
   }
