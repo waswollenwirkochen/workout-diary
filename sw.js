@@ -1,5 +1,5 @@
 // Offline-Fähigkeit: erst Netz, bei Fehler aus dem Cache
-const C = 'wd-v4';
+const C = 'wd-v5';
 const FILES = ['./', 'index.html', 'css/style.css', 'js/app.js', 'js/data.js', 'js/equip.js', 'js/plan.js', 'js/body.js', 'js/store.js', 'js/timer.js', 'js/details.js', 'manifest.webmanifest', 'icons/icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

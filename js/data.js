@@ -98,8 +98,8 @@ export const EXERCISES = [
     do: ['Hüftbewegung, keine Kniebeuge', 'Explosiv die Hüfte strecken – die Arme sind nur Seil', 'Oben Gesäß und Bauch fest anspannen'],
     dont: ['KB nicht über Brusthöhe schwingen', 'Rücken nicht runden'],
     easy: 'weniger Gewicht, kleinerer Schwung', hard: 'mehr Gewicht, mehr Wdh.' },
-  { id: 'rdl', n: 'Rumänisches Kreuzheben (RDL)', p: 'hip', r: ['legs'], m: { hamstrings: 1, glutes: 1, lowerback: .5 }, v: ['sz', 'kh2'], t: ['K'], star: true, pref: 9, w0: { sz: 25, kh2: 7.5 },
-    do: ['Gewicht nah am Bein führen', 'Leichte Kniebeugung fixieren, Hüfte nach hinten schieben', 'Absenken bis Schienbeinmitte'],
+  { id: 'rdl', n: 'Rumänisches Kreuzheben (RDL)', p: 'hip', r: ['legs'], m: { hamstrings: 1, glutes: 1, lowerback: .5 }, v: ['sz', 'kh2', 'kb'], t: ['K'], star: true, pref: 9, w0: { sz: 25, kh2: 7.5, kb: 22 },
+    do: ['Gewicht nah am Bein führen (KB: mit beiden Händen am Griff vor den Oberschenkeln)', 'Leichte Kniebeugung fixieren, Hüfte nach hinten schieben', 'Absenken bis Schienbeinmitte'],
     dont: ['Bei Rundrücken sofort abbrechen', 'Nicht aus dem Rücken hochziehen'],
     easy: 'kleinerer Bewegungsumfang', hard: 'mehr Gewicht, langsameres Tempo' },
   { id: 'goodmorning', n: 'Good Morning', p: 'hip', r: ['legs'], m: { hamstrings: 1, lowerback: 1, glutes: .5 }, v: ['bw', 'sz'], av: 'u', t: ['K'], pref: 2, w0: { sz: 10 },
@@ -369,16 +369,35 @@ export const WARMUP_GENERAL = [
   'Hüftkreisen 10× pro Richtung', 'Armkreisen 10× pro Richtung', 'Katze-Kuh 8 Wdh.',
   'World’s Greatest Stretch 5× pro Seite', 'Kniebeugen ohne Gewicht 10 Wdh.', 'Bandseitschritte oder Face Pulls 15 Wdh.'
 ];
+// fig: Strichfigur (Seitenansicht), l = Linien [x1,y1,x2,y2,…], h = gedehnter Bereich (orange), k = Kopf [x,y], o = Umgebung (Wand, Stange …)
 export const STRETCHES = [
-  { n: 'Hüftbeuger-Dehnung', d: 'Ausfallschritt, hinteres Knie ab, Hüfte vor, Gesäß fest', z: ['quads'] },
-  { n: 'Hamstring-Dehnung', d: 'Bein gestreckt, aus der Hüfte beugen – Rücken nicht runden', z: ['hamstrings'] },
-  { n: 'Quadrizeps-Dehnung', d: 'Ferse zum Gesäß, Knie nach unten', z: ['quads'] },
-  { n: 'Türrahmen-Dehnung', d: 'Unterarm am Rahmen 90°, Körper wegdrehen', z: ['chest', 'shoulders'] },
-  { n: 'Überkopf-Trizeps-Dehnung', d: 'Hand hinter den Kopf, Ellbogen sanft ziehen', z: ['triceps'] },
-  { n: 'Kindhaltung', d: 'Fersensitz, Arme lang nach vorn', z: ['lowerback', 'lats'] },
-  { n: 'Taube', d: 'Vorderes Bein angewinkelt, Oberkörper ablegen', z: ['glutes'] },
-  { n: 'Wadendehnung an der Wand', d: 'Ballen an die Wand, Ferse am Boden', z: ['calves'] },
-  { n: 'Toter Hang', d: '30–60 Sek. hängen (Stange)', z: ['lats', 'forearms'] }
+  { n: 'Hüftbeuger-Dehnung', side: true, z: ['quads'],
+    d: 'Tiefer Ausfallschritt, hinteres Knie auf eine weiche Unterlage. Oberkörper aufrecht, Gesäß des hinteren Beins anspannen und die Hüfte langsam nach vorn schieben, bis es vorn an der Leiste zieht. Nicht ins Hohlkreuz fallen.',
+    fig: { l: [[22, 90, 40, 90], [55, 62, 80, 68, 82, 92], [55, 62, 57, 34], [57, 37, 68, 50, 78, 64]], h: [[40, 90, 55, 62]], k: [58, 25] } },
+  { n: 'Hamstring-Dehnung', side: true, z: ['hamstrings'],
+    d: 'Ferse eines gestreckten Beins auf eine niedrige Stufe oder einen Stuhl legen, Zehen zeigen nach oben. Mit geradem Rücken aus der Hüfte nach vorn beugen, bis es hinten im Oberschenkel zieht. Nicht den Rücken runden, um weiter zu kommen.',
+    fig: { l: [[40, 92, 41, 72, 42, 52], [42, 52, 66, 36], [66, 38, 72, 52, 76, 64]], h: [[42, 52, 62, 64, 84, 76]], k: [74, 31], o: '<rect x="76" y="78" width="26" height="14" rx="2"/>' } },
+  { n: 'Quadrizeps-Dehnung', side: true, z: ['quads'],
+    d: 'Auf einem Bein stehen (bei Bedarf an der Wand festhalten). Den anderen Fuß greifen und die Ferse Richtung Gesäß ziehen. Knie zeigt nach unten, beide Knie nebeneinander, Becken leicht nach vorn kippen.',
+    fig: { l: [[55, 92, 55, 70, 55, 50], [57, 72, 44, 58], [55, 50, 55, 24], [55, 28, 48, 42, 44, 57], [55, 28, 68, 36, 76, 31]], h: [[55, 50, 57, 72]], k: [55, 15] } },
+  { n: 'Türrahmen-Dehnung', side: true, z: ['chest', 'shoulders'],
+    d: 'Seitlich in einen Türrahmen stellen, Unterarm im 90°-Winkel an den Rahmen legen (Ellbogen auf Schulterhöhe). Einen kleinen Schritt nach vorn machen und den Oberkörper leicht wegdrehen, bis es in der Brust zieht.',
+    fig: { l: [[58, 92, 60, 52], [66, 92, 62, 52], [60, 52, 60, 24], [60, 28, 72, 40, 76, 52]], h: [[60, 28, 44, 28, 44, 12]], k: [61, 15], o: '<line x1="40" y1="4" x2="40" y2="92"/>' } },
+  { n: 'Überkopf-Trizeps-Dehnung', side: true, z: ['triceps'],
+    d: 'Einen Arm nach oben strecken, dann im Ellbogen beugen, sodass die Hand hinter den Kopf zwischen die Schulterblätter fällt. Mit der anderen Hand den Ellbogen sanft nach hinten-innen ziehen. Kopf bleibt aufrecht.',
+    fig: { l: [[54, 92, 57, 58], [66, 92, 63, 58], [60, 58, 60, 32], [55, 35, 45, 21, 63, 6]], h: [[65, 35, 68, 4, 57, 20]], k: [60, 23] } },
+  { n: 'Kindhaltung', side: false, z: ['lowerback', 'lats'],
+    d: 'Im Kniestand auf die Fersen setzen, Knie etwas auseinander. Oberkörper nach vorn auf die Oberschenkel ablegen, Arme lang nach vorn strecken und die Hände weit wegschieben. Stirn ablegen und ruhig in den Rücken atmen.',
+    fig: { l: [[40, 90, 62, 90], [44, 82, 62, 90], [76, 76, 100, 88]], h: [[44, 82, 74, 75]], k: [82, 80] } },
+  { n: 'Taube', side: true, z: ['glutes'],
+    d: 'Aus dem Vierfüßlerstand ein Knie nach vorn zwischen die Hände bringen, der Unterschenkel liegt schräg vor dir. Das andere Bein lang nach hinten strecken. Hüfte gerade halten und den Oberkörper langsam nach vorn ablegen – Dehnung im Gesäß.',
+    fig: { l: [[58, 79, 30, 88, 12, 90], [72, 86, 52, 89], [58, 79, 82, 66], [82, 68, 86, 90]], h: [[58, 79, 72, 86]], k: [90, 61] } },
+  { n: 'Wadendehnung an der Wand', side: true, z: ['calves'],
+    d: 'Hände auf Schulterhöhe an die Wand, ein Bein weit nach hinten. Hinteres Bein gestreckt, die Ferse fest am Boden, Zehen zeigen nach vorn. Hüfte Richtung Wand schieben, bis es in der Wade zieht. Variante: Knie leicht beugen für die tiefe Wade.',
+    fig: { l: [[60, 58, 76, 36], [76, 38, 98, 40], [60, 58, 76, 72, 82, 92], [60, 58, 48, 75]], h: [[48, 75, 36, 92]], k: [82, 28], o: '<line x1="101" y1="4" x2="101" y2="92"/>' } },
+  { n: 'Toter Hang', side: false, z: ['lats', 'forearms'],
+    d: 'An der Klimmzugstange schulterbreit greifen und die Füße lösen. Schultern locker nach oben ziehen lassen, ganz entspannt hängen. 20–60 Sekunden, kontrolliert wieder aufsetzen.',
+    fig: { l: [[60, 30, 60, 60], [58, 60, 56, 90], [62, 60, 64, 90]], h: [[52, 10, 55, 30, 65, 30, 68, 10]], k: [60, 21], o: '<line x1="30" y1="10" x2="90" y2="10" stroke-width="3"/>' } }
 ];
 
 // Standard-Workouts

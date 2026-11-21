@@ -196,3 +196,17 @@ nav.tabs button.on.t-duo { color: var(--jenny); }
 .bopt { padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .timebtn { height: 40px; border-color: #ff6a2b77; color: var(--ember2); font-variant-numeric: tabular-nums; }
 .timebtn.j { border-color: #c79bff77; color: var(--jenny); }
+
+/* Dehn-Figuren */
+.sfig .gnd { stroke: var(--line); stroke-width: 1.5; }
+.sfig .env { stroke: var(--tx3); stroke-width: 2.5; fill: var(--card2); }
+.sfig .lb, .sfig .hl { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 6; }
+.sfig .lb { stroke: #9aa4b1; }
+.sfig .hl { stroke: var(--ember); filter: drop-shadow(0 0 3px #ff6a2b99); }
+.sfig .hd { fill: #9aa4b1; }
+.sfig.flip { transform: scaleX(-1); }
+.sfig.thumb { width: 64px; height: 54px; flex: none; background: var(--bg2); border-radius: 8px; }
+.timer .fig .sfig { width: min(70vw, 300px); height: auto; }
+.timer .big.withimg { font-size: min(18vw, 96px); margin: 4px 0; }
+.timer .desc { color: var(--tx2); font-size: 15px; line-height: 1.45; max-width: 440px; margin-top: 8px; }
+.timer.plain { background: var(--bg); }

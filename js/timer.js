@@ -37,8 +37,10 @@ export function runTimer(phases, { title = '', onDone } = {}) {
     const done = elapsedBefore + (p.sec - left);
     el.innerHTML = `
       <div class="ph">${title ? title + ' · ' : ''}${p.label || ''}</div>
-      <div class="big">${p.sec >= 60 ? mm + ':' + String(ss).padStart(2, '0') : Math.ceil(left)}</div>
+      ${p.img ? `<div class="fig">${p.img}</div>` : ''}
+      <div class="big ${p.img ? 'withimg' : ''}">${p.sec >= 60 ? mm + ':' + String(ss).padStart(2, '0') : Math.ceil(left)}</div>
       <div class="what">${p.what || ''}</div>
+      ${p.desc ? `<div class="desc">${p.desc}</div>` : ''}
       <div class="next">${p.next ? 'Danach: ' + p.next : ''}</div>
       <div class="prog"><i style="width:${(100 * done / total).toFixed(1)}%"></i></div>
       <div class="tb">

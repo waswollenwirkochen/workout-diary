@@ -1,7 +1,7 @@
 import { EX, EXERCISES, PATTERNS, MAIN_PATTERNS, REGIONS, VARIANTS, AVAIL, ZONES, FORMATS, WARMUP_GENERAL, STRETCHES } from './data.js';
 import { IMPL_TYPES, variantPossible, isLoaded, weightOptions, stepOption, nearestOption, plateText, blockFeasible, fmtKg, clearCache, DEFAULT_EQUIPMENT } from './equip.js';
 import { buildPlan, suggestFormat, todaySummary, zoneStatus, glow, agoText, lastPerf, lastVariant, makePerson, doneEntries, progression } from './plan.js';
-import { bodySVG, paintBody } from './body.js';
+import { bodySVG, paintBody, stretchSVG } from './body.js';
 import { DETAILS, DEFAULT_BREATH } from './details.js';
 import { load, saveLocal, syncCfg, setSyncCfg, sync, merge } from './store.js';
 import { runTimer, countdown } from './timer.js';
@@ -204,7 +204,7 @@ function viewEditor(e) {
   const st = e.stretch || { min: 8, list: [] };
   out += `<div class="card"><h2>Stretching</h2>
     <div class="row">${stepper('stretchmin', `${st.min}<small>min</small>`)}<button class="btn sm" data-a="stretchtimer">▶ Geführt</button><span class="dim grow" style="text-align:right">${st.list.length}/${STRETCHES.length}</span></div>
-    <div style="margin-top:8px">${STRETCHES.map((x, i) => `<label class="check"><input type="checkbox" data-a="stretchck" data-i="${i}" ${st.list.includes(i) ? 'checked' : ''}><span><b>${x.n}</b><br><span class="dim">${x.d}</span></span></label>`).join('')}</div></div>`;
+    <div style="margin-top:8px">${STRETCHES.map((x, i) => `<label class="check"><input type="checkbox" data-a="stretchck" data-i="${i}" ${st.list.includes(i) ? 'checked' : ''}>${stretchSVG(x.fig, 'thumb')}<span><b>${x.n}</b>${x.side ? ' <span class="dim">· pro Seite</span>' : ''}<br><span class="dim">${x.d.split('. ')[0]}.</span></span></label>`).join('')}</div></div>`;
 
   out += `<div class="card"><h2>Notiz</h2><textarea rows="2" data-a="note" placeholder="Wie lief's? (optional)">${esc(e.note)}</textarea></div>`;
   out += e.done
@@ -539,9 +539,16 @@ document.addEventListener('click', ev => {
       case 'stretchmin': e.stretch.min = Math.max(1, e.stretch.min + x.dir); touch(e); render(); return;
       case 'stretchtimer': {
         const list = e.stretch.list.length ? e.stretch.list : STRETCHES.map((_, i) => i);
-        const per = Math.max(20, Math.round(e.stretch.min * 60 / list.length));
-        runTimer(list.map((i, k) => ({ label: `Dehnung ${k + 1}/${list.length}`, what: STRETCHES[i].n, next: list[k + 1] != null ? STRETCHES[list[k + 1]].n : '', sec: per, kind: 'rest' })),
-          { title: 'Stretching', onDone: () => { e.stretch.list = [...new Set([...e.stretch.list, ...list])]; touch(e); render(); } });
+        const parts = list.flatMap(i => STRETCHES[i].side ? [[i, 'links'], [i, 'rechts']] : [[i, '']]);
+        const per = Math.max(20, Math.round(e.stretch.min * 60 / parts.length));
+        const ph = [];
+        parts.forEach(([i, sd], k) => {
+          const st = STRETCHES[i], nx = parts[k + 1];
+          ph.push({ label: `Dehnung ${list.indexOf(i) + 1}/${list.length}${sd ? ' · ' + sd : ''}`, what: st.n, desc: st.d, img: stretchSVG(st.fig, 'big' + (sd === 'rechts' ? ' flip' : '')),
+            next: nx ? STRETCHES[nx[0]].n + (nx[1] ? ' (' + nx[1] + ')' : '') : '', sec: per, kind: 'rest' });
+          if (nx) ph.push({ label: nx[0] === i ? 'Seite wechseln' : 'Nächste Dehnung', what: STRETCHES[nx[0]].n, img: stretchSVG(STRETCHES[nx[0]].fig, 'big' + (nx[1] === 'rechts' ? ' flip' : '')), sec: 6, kind: 'plain' });
+        });
+        runTimer(ph, { title: 'Stretching', onDone: () => { e.stretch.list = [...new Set([...e.stretch.list, ...list])]; touch(e); render(); } });
         return;
       }
       case 'rounds': { const b = e.blocks[x.bi]; b.rounds = Math.max(1, Math.min(8, b.rounds + x.dir));

@@ -92,3 +92,14 @@ export function paintBody(svg, glows, rec = new Set()) {
     p.classList.toggle('rec', rec.has(z));
   });
 }
+
+// Strichfigur für Dehnübungen
+export function stretchSVG(fig, cls = '') {
+  const pl = (pts, c) => `<polyline class="${c}" points="${pts.join(' ')}"/>`;
+  return `<svg class="sfig ${cls}" viewBox="0 0 120 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <line class="gnd" x1="4" y1="93" x2="116" y2="93"/>
+    <g class="env">${fig.o || ''}</g>
+    ${fig.l.map(p => pl(p, 'lb')).join('')}
+    ${fig.h.map(p => pl(p, 'hl')).join('')}
+    <circle class="hd" cx="${fig.k[0]}" cy="${fig.k[1]}" r="6.5"/></svg>`;
+}
