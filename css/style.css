@@ -1,7 +1,7 @@
 :root {
   --bg: #121418; --bg2: #191c22; --card: #1e222a; --card2: #252a33; --line: #2e343e;
   --tx: #e9ecf0; --tx2: #a3acb8; --tx3: #6f7884;
-  --ember: #ff6a2b; --ember2: #ff9a52; --green: #5fd39a; --red: #ff5d5d; --blue: #6cb6ff; --jenny: #c79bff;
+  --ember: #ff6a2b; --ember2: #ff9a52; --green: #5fd39a; --red: #ff5d5d; --blue: #6cb6ff; --jenny: #c79bff; --teal: #3fc8b6;
   --r: 14px; --nav: 64px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -40,6 +40,7 @@ svg.body { width: 100%; height: auto; display: block; max-height: 56vh; }
 .z { fill: #343b46; stroke: var(--bg); stroke-width: .8; transition: fill .4s; cursor: pointer; }
 .z.hot { filter: url(#glow); }
 .z.rec { stroke: var(--green); stroke-width: 1.7; stroke-dasharray: 3 2; }
+.z.str { stroke: var(--blue); stroke-width: 1.8; stroke-dasharray: none; }
 .z.sel { stroke: #fff; stroke-width: 1.6; }
 .lines path { stroke: var(--bg); stroke-width: 1; fill: none; pointer-events: none; }
 .lbl { fill: var(--tx3); font-size: 11px; text-anchor: middle; }
@@ -210,3 +211,36 @@ nav.tabs button.on.t-duo { color: var(--jenny); }
 .timer .big.withimg { font-size: min(18vw, 96px); margin: 4px 0; }
 .timer .desc { color: var(--tx2); font-size: 15px; line-height: 1.45; max-width: 440px; margin-top: 8px; }
 .timer.plain { background: var(--bg); }
+
+/* Yoga-Figuren */
+.yfig { display: block; }
+.yfig .gnd { stroke: var(--line); stroke-width: 1.5; }
+.yfig .mat { fill: #2a3a3d55; stroke: var(--line); }
+.yfig .env { stroke: var(--tx3); stroke-width: 2.5; fill: none; stroke-linecap: round; }
+.yfig .env rect { fill: var(--card2); }
+.yfig .env .prop { stroke: var(--blue); fill: #6cb6ff33; stroke-width: 2; }
+.yfig .env .mv { stroke: var(--ember2); stroke-width: 1.6; stroke-dasharray: 3 3; fill: none; }
+.yfig .sk line, .yfig .sk path { stroke: #a7b0bc; stroke-width: 6; stroke-linecap: round; fill: none; }
+.yfig .sk .far line { stroke: #6f7884; }
+.yfig .sk .hd { fill: #a7b0bc; }
+.yfig .sk.p2 line, .yfig .sk.p2 path { stroke: #b99be8; } .yfig .sk.p2 .far line { stroke: #8a72b3; } .yfig .sk.p2 .hd { fill: #b99be8; }
+.yfig .sk .hl, .yfig .sk .far .hl { stroke: var(--ember); filter: drop-shadow(0 0 2.5px #ff6a2b99); }
+.yfig.flip { transform: scaleX(-1); }
+.yfig.thumb { width: 64px; height: 54px; flex: none; background: var(--bg2); border-radius: 8px; }
+.timer .fig .yfig { width: min(72vw, 320px); height: auto; }
+.timer.yoga { background: radial-gradient(circle at 50% 35%, #2fb3a522, var(--bg) 70%), var(--bg); }
+
+/* Yoga-Reiter */
+.btn.yoga { background: linear-gradient(180deg, #34b6a5, #23907f); border-color: #4fd2bf; color: #fff; }
+.prog-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; }
+button.prog-card.card { margin: 8px 0; }
+.prog-card .pi { font-size: 26px; width: 44px; height: 44px; border-radius: 12px; background: #3fc8b61a; display: flex; align-items: center; justify-content: center; flex: none; }
+.prog-card .go { color: var(--tx3); font-size: 26px; }
+.prog-card .badge { font-size: 11px; vertical-align: 1px; }
+.ylist { padding: 6px 12px; }
+.yrow { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+.yrow:first-child { border-top: 0; }
+.yinfo-fig .yfig { width: 100%; max-width: 360px; margin: 0 auto; background: var(--bg); border-radius: 12px; }
+.hist.ycard { border-left: 3px solid var(--teal); }
+nav.tabs button { font-size: 10.5px; }
+nav.tabs button.on.t-yoga { color: var(--teal); }

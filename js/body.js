@@ -82,7 +82,7 @@ export function heatColor(g) {
   return `hsl(${h} 96% ${l}%)`;
 }
 
-export function paintBody(svg, glows, rec = new Set()) {
+export function paintBody(svg, glows, rec = new Set(), str = new Set()) {
   svg.querySelectorAll('.z').forEach(p => {
     const z = p.dataset.z, g = glows[z] || 0;
     const c = heatColor(g);
@@ -90,6 +90,7 @@ export function paintBody(svg, glows, rec = new Set()) {
     p.style.fillOpacity = c ? (0.5 + 0.5 * g).toFixed(2) : '';
     p.classList.toggle('hot', g > 0);
     p.classList.toggle('rec', rec.has(z));
+    p.classList.toggle('str', str.has(z));
   });
 }
 

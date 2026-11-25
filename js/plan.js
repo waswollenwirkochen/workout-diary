@@ -209,7 +209,7 @@ function pickVariant(state, eq, who, ex, mode, format, used, cap, preferOrder) {
 }
 
 export function suggestFormat(state, now = Date.now(), mode = 'home') {
-  const done = doneEntries(state);
+  const done = doneEntries(state).filter(e => e.format !== 'yoga');
   if (!done.length) return 'k3';
   const week = done.filter(e => now - e.ts < 7 * DAY);
   const lastOf = f => (done.find(e => e.format === f) || { ts: 0 }).ts;
@@ -336,11 +336,11 @@ export function todaySummary(state, now = Date.now()) {
   const done = doneEntries(state);
   const zs = zoneStatus(state, now);
   const ps = patternStats(state, now);
-  const last = done[0] || null;
+  const last = done.find(e => e.format !== 'yoga') || null;
   const recovering = Object.entries(zs).filter(([z, s]) => s.last && (now - s.last) / H < RECOVERY_H && s.lastSets >= 3).map(([z]) => z);
   const due = MAIN_PATTERNS.filter(p => !patternBlocked(zs, p, now))
     .map(p => ({ p, d: ps[p].last ? (now - ps[p].last) / DAY : 99, n7: ps[p].n7 }))
     .sort((a, b) => (b.d + (2 - b.n7) * 1.5) - (a.d + (2 - a.n7) * 1.5));
-  const week = done.filter(e => now - e.ts < 7 * DAY).length;
+  const week = done.filter(e => e.format !== 'yoga' && now - e.ts < 7 * DAY).length;
   return { last, zs, ps, recovering, due, week };
 }

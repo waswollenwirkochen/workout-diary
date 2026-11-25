@@ -408,6 +408,7 @@ export const FORMATS = {
     slots: [['knee', 'hpull'], ['hpush', 'hip'], ['vpull', 'vpush'], ['core', 'iso', 'iso']] },
   hiit: { n: 'HIIT-Zirkel', long: '5 Übungen · 40 s / 20 s · 3–4 Runden', kind: 'HIIT', blocks: 1, rounds: 3, work: 40, rest: 20, roundPause: 90, timed: true,
     slots: [['knee', 'hpush', 'hip', 'hpull', 'core']] },
+  yoga: { n: 'Yoga & Dehnen', long: '', kind: 'Y', blocks: 0, rounds: 1, timed: true, hidden: true, slots: [] },
   kb: { n: 'Kettlebell-Circuit', long: 'eine KB für alles · 5–6 Übungen · 3–4 Runden', kind: 'KB', blocks: 1, rounds: 3, reps: [8, 12], pause: 90,
     slots: [['hip', 'knee', 'hpull', 'vpush', 'core', 'cardio']] }
 };

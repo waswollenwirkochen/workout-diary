@@ -20,7 +20,7 @@ async function keepAwake(on) {
 }
 
 // phases: [{label, what, next, sec, kind: 'work'|'rest'|'plain'}]
-export function runTimer(phases, { title = '', onDone } = {}) {
+export function runTimer(phases, { title = '', onDone, onPhase, soft = false } = {}) {
   beep(1, 0.01, 0.001); // AudioContext per Nutzer-Geste entsperren
   const el = document.createElement('div');
   el.className = 'timer';
@@ -54,13 +54,16 @@ export function runTimer(phases, { title = '', onDone } = {}) {
     elapsedBefore = phases.slice(0, n).reduce((s, p) => s + p.sec, 0);
     i = n; left = phases[i].sec;
     const k = phases[i].kind;
-    beep(k === 'work' ? 1046 : 660, 0.35, 0.35); buzz(k === 'work' ? [200, 80, 200] : 300);
+    if (soft) { if (!phases[i].quiet) beep(523, 0.5, 0.12); }
+    else { beep(k === 'work' ? 1046 : 660, 0.35, 0.35); buzz(k === 'work' ? [200, 80, 200] : 300); }
+    onPhase && onPhase(phases[i], i);
     render();
   }
   function finish(completed) {
+    const elapsed = Math.round(elapsedBefore + (phases[i].sec - Math.max(0, left)));
     cancelAnimationFrame(raf); keepAwake(false); el.remove();
     if (completed) { beep(1318, 0.5, 0.4); buzz([300, 100, 300, 100, 500]); }
-    onDone && onDone(completed);
+    onDone && onDone(completed, elapsed);
   }
   function tick(t) {
     const dt = (t - last) / 1000; last = t;
@@ -68,7 +71,7 @@ export function runTimer(phases, { title = '', onDone } = {}) {
       const before = Math.ceil(left);
       left -= dt;
       const now = Math.ceil(left);
-      if (now !== before && now <= 3 && now > 0) beep(880, 0.1, 0.25);
+      if (now !== before && now <= 3 && now > 0 && !phases[i].quiet && !soft) beep(880, 0.1, 0.25);
       if (left <= 0) { if (i + 1 < phases.length) go(i + 1); else return finish(true); }
       else if (now !== before) render();
     }
@@ -81,8 +84,26 @@ export function runTimer(phases, { title = '', onDone } = {}) {
     if (a === 'prev') go(Math.max(0, left < phases[i].sec - 2 ? i : i - 1));
     if (a === 'stop') finish(false);
   });
+  onPhase && onPhase(phases[0], 0);
   render(); raf = requestAnimationFrame(tick);
 }
+
+// Sprachausgabe (Web Speech API, deutsche Stimme)
+let voice = null;
+function pickVoice() {
+  try { const vs = speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('de')); voice = vs.find(v => /google|anna|petra|helena|katja/i.test(v.name)) || vs[0] || null; } catch (e) { }
+}
+if (typeof speechSynthesis !== 'undefined') { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+export function speak(text) {
+  try {
+    if (!text || typeof speechSynthesis === 'undefined') return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'de-DE'; if (voice) u.voice = voice; u.rate = 0.95; u.pitch = 1;
+    speechSynthesis.speak(u);
+  } catch (e) { }
+}
+export function stopSpeak() { try { speechSynthesis.cancel(); } catch (e) { } }
 
 export function countdown(label, sec, what, onDone) {
   runTimer([{ label, what, sec, kind: 'work' }], { onDone });

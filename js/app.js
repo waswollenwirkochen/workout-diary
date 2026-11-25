@@ -4,10 +4,11 @@ import { buildPlan, suggestFormat, todaySummary, zoneStatus, glow, agoText, last
 import { bodySVG, paintBody, stretchSVG } from './body.js';
 import { DETAILS, DEFAULT_BREATH } from './details.js';
 import { load, saveLocal, syncCfg, setSyncCfg, sync, merge } from './store.js';
-import { runTimer, countdown } from './timer.js';
+import { runTimer, countdown, speak, stopSpeak } from './timer.js';
+import { POSE, POSES, PROGRAMS, PROGRAM, THEMES, FOCUS, TAGS, TAG_ZONES, PLACES, planSession, planSeconds, programItems, buildCustom, withPartner, poseSVG, BREATH, TRANS, SWITCH } from './yoga.js';
 
 let S = load();
-const ui = { view: 'start', editId: null, sheet: null, more: new Set(), tips: true, zone: null, histWho: 'e', sync: 'idle', syncMsg: '' };
+const ui = { y: { travel: false, duo: false, prog: null, custom: { focus: [], style: 'ruhig', place: 'm' } }, view: 'start', editId: null, sheet: null, more: new Set(), tips: true, zone: null, histWho: 'e', sync: 'idle', syncMsg: '' };
 const $ = (s, el = document) => el.querySelector(s);
 const app = $('#app');
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -82,6 +83,7 @@ function touch(e) { e.touched = true; e.updatedAt = Date.now(); persist(); }
 
 // ── Rendering ────────────────────────────────────────────
 const ICONS = {
+  yoga: '<svg viewBox="0 0 24 24"><circle cx="12" cy="4.5" r="2.2"/><path d="M12 7.5v6M5 10.5c2.5 1.5 4.5 2.5 7 3 2.5-.5 4.5-1.5 7-3M5 19.5c3-1 4.5-3 7-6 2.5 3 4 5 7 6M4 20.5h16"/></svg>',
   start: '<svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.5"/><path d="M12 8v7M8 11h8M10 22l2-7 2 7"/></svg>',
   duo: '<svg viewBox="0 0 24 24"><circle cx="8" cy="6" r="2.3"/><circle cx="16" cy="6" r="2.3"/><path d="M8 9v6M16 9v6M5 12h6M13 12h6M7 21l1-6 1 6M15 21l1-6 1 6"/></svg>',
   hist: '<svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M4 9h16M8 13h3M8 17h6"/></svg>',
@@ -90,6 +92,8 @@ const ICONS = {
 };
 
 function navTab() {
+  if (ui.view === 'yogaprev') return 'yoga';
+  if (ui.view === 'yogaentry') return 'hist';
   if (ui.view === 'edit') { const e = entry(ui.editId); if (!e) return 'start'; return e.done ? 'hist' : e.duo ? 'duo' : 'start'; }
   return ui.view;
 }
@@ -101,10 +105,13 @@ function render() {
   else if (ui.view === 'hist') html = viewHist();
   else if (ui.view === 'equip') html = viewEquip();
   else if (ui.view === 'set') html = viewSettings();
+  else if (ui.view === 'yoga') html = viewYoga();
+  else if (ui.view === 'yogaprev') html = viewYogaPreview();
+  else if (ui.view === 'yogaentry' && entry(ui.editId)) html = viewYogaEntry(entry(ui.editId));
   else { ui.view = 'start'; html = viewStart(); }
   app.innerHTML = `<main>${html}</main>
     <nav class="tabs">
-      ${[['start', 'Start'], ['duo', 'Duo'], ['hist', 'Verlauf'], ['equip', 'Equipment'], ['set', 'Sync']].map(([k, l]) =>
+      ${[['start', 'Start'], ['duo', 'Duo'], ['yoga', 'Yoga'], ['hist', 'Verlauf'], ['equip', 'Geräte'], ['set', 'Sync']].map(([k, l]) =>
     `<button data-a="nav" data-v="${k}" class="${tab === k ? 'on' : ''} t-${k}">${ICONS[k]}${l}</button>`).join('')}
     </nav>
     ${ui.view === 'edit' && entry(ui.editId) && !FORMATS[entry(ui.editId).format].timed ? `<button class="fab" data-a="pause">⏱ Pause ${FORMATS[entry(ui.editId).format].pause} s</button>` : ''}`;
@@ -114,7 +121,7 @@ function render() {
       const sum = todaySummary(S);
       const g = Object.fromEntries(Object.entries(sum.zs).map(([z, s]) => [z, glow(s)]));
       const rec = new Set(sum.due.slice(0, 3).flatMap(d => PATTERNS[d.p].zones));
-      paintBody(svg, g, rec);
+      paintBody(svg, g, rec, stretchedZones());
       if (ui.zone) svg.querySelectorAll(`.z[data-z="${ui.zone}"]`).forEach(p => p.classList.add('sel'));
     }
   }
@@ -135,7 +142,7 @@ function viewStart() {
   let out = header('Workout <span>Diary</span>', `${WD[today.getDay()]}, ${today.toLocaleDateString('de-DE', { day: 'numeric', month: 'long' })}`);
   if (d) out += `<div class="card"><div class="row"><div class="grow"><b>Training läuft</b><div class="dim">${FORMATS[d.format].n} · gestartet ${fmtTime(d.ts)}</div></div><button class="btn primary" data-a="open" data-id="${d.id}">Fortsetzen</button></div></div>`;
   out += `<div class="card bodywrap">${bodySVG()}
-    <div class="legend"><span><i style="background:hsl(14 96% 50%)"></i>&lt; 24 h</span><span><i style="background:hsl(27 96% 54%)"></i>24–48 h</span><span><i style="background:hsl(33 80% 56%);opacity:.7"></i>48–72 h</span><span><i style="border:1.5px dashed var(--green)"></i>heute dran</span></div>
+    <div class="legend"><span><i style="background:hsl(14 96% 50%)"></i>&lt; 24 h</span><span><i style="background:hsl(27 96% 54%)"></i>24–48 h</span><span><i style="background:hsl(33 80% 56%);opacity:.7"></i>48–72 h</span><span><i style="border:1.5px dashed var(--green)"></i>heute dran</span><span><i style="border:1.8px solid var(--blue)"></i>gedehnt</span></div>
     <div class="zinfo" id="zinfo">${ui.zone ? zoneInfo(ui.zone, sum) : 'Tippe auf einen Muskel für Details'}</div></div>`;
   out += `<div class="card"><h2>Zuletzt trainiert</h2>${last ? `
       <div class="row"><div class="grow"><b>${fmtDate(last.ts)}</b> <span class="muted">· ${agoText(last.ts)}</span><div class="dim">${FORMATS[last.format].n}${last.duo ? ' · mit Jenny' : ''}${last.mode === 'travel' ? ' · unterwegs' : ''}</div></div>
@@ -148,7 +155,8 @@ function viewStart() {
     <div class="dim" style="margin-top:8px">Vorschlag: <b class="muted">${FORMATS[suggestFormat(S, Date.now(), S.settings.lastMode || 'home')].n}</b></div></div>`;
   out += `<div class="row" style="gap:10px;margin:14px 0">
       <button class="btn primary block" data-a="${d ? 'open' : 'new'}" ${d ? `data-id="${d.id}"` : ''}>${d ? 'Training fortsetzen' : '+ Neues Training'}</button></div>
-    <button class="btn jenny block" data-a="nav" data-v="duo">Duo-Training mit Jenny</button>`;
+    <button class="btn jenny block" data-a="nav" data-v="duo">Duo-Training mit Jenny</button>
+    <div class="sp"></div><button class="btn yoga block" data-a="nav" data-v="yoga">🧘 Yoga &amp; Dehnen</button>`;
   return out;
 }
 function zoneInfo(z, sum) {
@@ -165,6 +173,7 @@ function viewDuo() {
     `<div class="card"><p class="muted" style="margin:0 0 10px">Ihr macht dieselben Übungen gleichzeitig – jede Person mit eigenem Gerät und eigenem Gewicht. Die App verteilt die Geräte so, dass ihr euch im selben Set nichts wegnehmt (z. B. Eric mit KB, Jenny mit Kurzhantel), und merkt sich Jennys Gewichte separat.</p>
     <p class="dim" style="margin:0">Partnerübungen wie Handtuch-Rudern, Handtuch-Latzug oder Nordic Curl werden bevorzugt.</p></div>
     <button class="btn jenny block" data-a="newduo">+ Duo-Training starten</button>
+    <div class="sp"></div><button class="btn yoga block" data-a="duoyoga">🧘 Duo-Yoga mit Jenny</button>
     ${duos.length ? `<div class="week">Letzte Duo-Trainings</div>${duos.map(histCard).join('')}` : ''}`;
 }
 
@@ -178,7 +187,7 @@ function viewEditor(e) {
   if (!e.done) {
     const sum = todaySummary(S);
     out += `<div class="card"><h2>Heute</h2>
-      <div class="fmt">${Object.entries(FORMATS).map(([k, f]) => `<button class="${e.format === k ? 'on' : ''}" data-a="fmt" data-v="${k}">${k === e.suggested ? '<span class="sug">Vorschlag</span>' : ''}<b>${f.n}</b><span>${f.long}</span></button>`).join('')}</div>
+      <div class="fmt">${Object.entries(FORMATS).filter(([k, f]) => !f.hidden).map(([k, f]) => `<button class="${e.format === k ? 'on' : ''}" data-a="fmt" data-v="${k}">${k === e.suggested ? '<span class="sug">Vorschlag</span>' : ''}<b>${f.n}</b><span>${f.long}</span></button>`).join('')}</div>
       <div class="sp"></div>
       <div class="seg"><button data-a="mode" data-v="home" class="${e.mode !== 'travel' ? 'on' : ''}">🏠 Zuhause</button><button data-a="mode" data-v="travel" class="${e.mode === 'travel' ? 'on' : ''}">🎒 Unterwegs</button></div>
       <div class="toggle" style="margin-top:8px"><span class="muted">Lauf heute oder morgen geplant</span><button class="sw ${e.runSoon ? 'on' : ''}" data-a="run"></button></div>
@@ -406,6 +415,11 @@ function applyPick(id) {
 
 // ── Verlauf ──────────────────────────────────────────────
 function histCard(e) {
+  if (e.format === 'yoga') {
+    const y = e.yoga || {};
+    return `<button class="hist ycard" data-a="open" data-id="${e.id}"><div class="t"><span>${fmtDate(e.ts)} · 🧘 ${esc(y.name || 'Yoga')}</span><span class="dim">${e.duo ? '<span style="color:var(--jenny)">Duo</span> · ' : ''}${e.mode === 'travel' ? '🎒 · ' : ''}${Math.round((y.sec || 0) / 60)} min</span></div>
+      <div class="s">${(y.poses || []).length} Positionen · ${esc([...new Set((y.poses || []).map(id => POSE[id]?.n).filter(Boolean))].slice(0, 4).join(', '))}</div></button>`;
+  }
   const exs = e.blocks.flatMap(b => b.items.map(i => EX[i.e?.ex]?.n)).filter(Boolean);
   const dur = e.end ? Math.round((e.end - e.ts) / 60000) : null;
   return `<button class="hist" data-a="open" data-id="${e.id}"><div class="t"><span>${fmtDate(e.ts)} · ${FORMATS[e.format].n}</span><span class="dim">${e.duo ? '<span style="color:var(--jenny)">Duo</span> · ' : ''}${e.mode === 'travel' ? '🎒 · ' : ''}${dur ? dur + ' min' : ''}</span></div>
@@ -424,8 +438,8 @@ function viewHist() {
   const who = ui.histWho;
   const seen = new Map();
   for (const en of done) for (const b of en.blocks) for (const it of b.items) { const p = it[who]; if (p && !seen.has(p.ex + p.v)) seen.set(p.ex + p.v, { p, ts: en.ts, rounds: p.rr?.length || b.rounds, timed: FORMATS[en.format].timed }); }
-  const hasJ = done.some(e => e.duo);
-  out += `<div class="card"><h2>Letzte Werte ${hasJ ? `<span class="r"><span class="seg" style="display:inline-flex;padding:2px"><button data-a="hwho" data-v="e" class="${who === 'e' ? 'on' : ''}" style="padding:4px 10px">Eric</button><button data-a="hwho" data-v="j" class="${who === 'j' ? 'on' : ''}" style="padding:4px 10px">Jenny</button></span></span>` : ''}</h2>
+  const hasJ = done.some(e => e.duo && e.format !== 'yoga');
+  if (seen.size) out += `<div class="card"><h2>Letzte Werte ${hasJ ? `<span class="r"><span class="seg" style="display:inline-flex;padding:2px"><button data-a="hwho" data-v="e" class="${who === 'e' ? 'on' : ''}" style="padding:4px 10px">Eric</button><button data-a="hwho" data-v="j" class="${who === 'j' ? 'on' : ''}" style="padding:4px 10px">Jenny</button></span></span>` : ''}</h2>
     <table class="t">${[...seen.values()].sort((a, b) => EX[a.p.ex].n.localeCompare(EX[b.p.ex].n)).map(({ p, ts, rounds, timed }) => `<tr><td>${esc(EX[p.ex].n)}<br><span class="dim">${VARIANTS[p.v].n} · ${fmtDate(ts)}</span></td><td>${isLoaded(p.v) && p.w != null ? '<b>' + num(p.w) + ' kg</b><br>' : ''}${timed ? 'HIIT' : p.rr?.length ? p.rr.map(r => r.reps).join('/') : rounds + '×' + (p.reps ?? '')}</td></tr>`).join('')}</table></div>`;
   let wk = '';
   for (const e of done) { const w = isoWeek(e.ts); if (w !== wk) { wk = w; out += `<div class="week">${w.replace('-', ' · ')}</div>`; } out += histCard(e); }
@@ -491,6 +505,194 @@ function viewSettings() {
   <div class="dim" style="text-align:center;margin:20px 0">Workout Diary · Übungen &amp; Logik nach deinem Trainings-Kompendium</div>`;
 }
 
+// ── Yoga & Dehnen ────────────────────────────────────────
+const DURS = [5, 10, 15, 20, 30];
+const yDur = () => S.settings.yogaDur || 10;
+const yTts = () => S.settings.yogaTts !== false;
+const WALL = new Set(['wade_wand', 'soleus', 'ball_ruecken', 'beine_wand']);
+const CHAIRP = new Set(['stuhl_katze', 'stuhl_drehung', 'stuhl_taube', 'stuhl_vorbeuge', 'stuhl_seit', 'fussgelenk', 'hamstring_st']);
+
+// Muskelzonen, die in den letzten 24 h gedehnt wurden (Yoga + Stretching nach dem Training)
+function stretchedZones(now = Date.now()) {
+  const z = new Set();
+  for (const e of doneEntries(S)) {
+    if (now - e.ts > 24 * 3600e3) break;
+    if (e.format === 'yoga') (e.yoga?.poses || []).forEach(id => (POSE[id]?.tags || []).forEach(t => TAG_ZONES[t]?.forEach(x => z.add(x))));
+    else (e.stretch?.list || []).forEach(i => (STRETCHES[i]?.z || []).forEach(x => z.add(x)));
+  }
+  return z;
+}
+function lastStretchByTag() {
+  const r = {};
+  for (const e of doneEntries(S)) {
+    const tags = e.format === 'yoga' ? (e.yoga?.poses || []).flatMap(id => POSE[id]?.tags || []) : [];
+    for (const t of tags) if (!r[t]) r[t] = e.ts;
+  }
+  return r;
+}
+function yogaSuggestion(now = new Date()) {
+  const h = now.getHours();
+  if (h < 11) return { id: 'wecken', why: 'Guten Morgen – sanft wach werden.' };
+  if (h >= 20) return { id: 'abend', why: 'Später Abend – zum Runterkommen.' };
+  const lastStrength = doneEntries(S).find(e => e.format !== 'yoga');
+  if (lastStrength && Date.now() - lastStrength.ts < 3 * 3600e3) {
+    const legs = lastStrength.blocks.some(b => b.items.some(it => ['knee', 'hip'].includes(EX[it.e?.ex]?.p)));
+    return { id: legs ? 'sitzen_matte' : 'nacken', why: 'Ergänzung zu deinem Training von heute.' };
+  }
+  const ls = lastStretchByTag();
+  const cands = PROGRAMS.filter(p => !p.travel && !['wecken', 'abend'].includes(p.id)).map(p => {
+    const tags = [...new Set(p.items.flatMap(([id]) => POSE[id].tags))];
+    const age = Math.min(...tags.map(t => ls[t] ? (Date.now() - ls[t]) / 864e5 : 30));
+    return { p, age };
+  }).sort((a, b) => b.age - a.age);
+  return { id: cands[0].p.id, why: 'Diese Bereiche hast du am längsten nicht gedehnt.' };
+}
+
+function currentYoga() {
+  const y = ui.y, min = yDur();
+  if (y.prog === 'custom') {
+    let items = buildCustom({ ...y.custom, duo: y.duo });
+    if (y.duo) items = withPartner(items, min, y.custom.place === 'm' ? 'm' : 'travel');
+    const plan = planSession(items, min);
+    const fn = y.custom.focus.length ? y.custom.focus.map(f => FOCUS[f].n).join(', ') : 'Ganzkörper';
+    return { id: 'custom', name: `Eigenes Set: ${fn}`, style: y.custom.style, travel: y.custom.place !== 'm', plan, min };
+  }
+  const prog = PROGRAM[y.prog];
+  const items = programItems(prog, { travel: y.travel, duo: y.duo, minutes: min });
+  return { id: prog.id, name: prog.n, style: prog.style, travel: !!prog.travel || y.travel, plan: planSession(items, min), min };
+}
+function holdText(it) {
+  const p = POSE[it.id];
+  if (p.flow) return `${it.rounds} ${it.rounds === 1 ? 'Runde' : 'Runden'}`;
+  return p.side ? `2 × ${it.hold} s` : (it.hold >= 60 ? `${Math.floor(it.hold / 60)}:${String(it.hold % 60).padStart(2, '0')} min` : `${it.hold} s`);
+}
+function needs(plan, travel) {
+  const ids = new Set(plan.map(x => x.id));
+  const n = [];
+  if (!travel && [...ids].some(id => POSE[id].place.includes('m'))) n.push('Matte');
+  if ([...ids].some(id => WALL.has(id))) n.push('Wand');
+  if ([...ids].some(id => id === 'tuer_brust')) n.push('Türrahmen');
+  if ([...ids].some(id => CHAIRP.has(id))) n.push('Stuhl');
+  [...new Set([...ids].map(id => POSE[id].prop).filter(Boolean))].forEach(x => n.push(x));
+  if (ui.y.duo) n.push('Jenny 💜');
+  return n;
+}
+
+function viewYoga() {
+  const y = ui.y, sug = yogaSuggestion(), sp = PROGRAM[sug.id];
+  const durChips = `<div class="chips">${DURS.map(d => `<button class="chip ${yDur() === d ? 'on' : ''}" data-a="ydur" data-v="${d}">${d} min</button>`).join('')}</div>`;
+  let out = header('Yoga &amp; <span style="color:var(--teal)">Dehnen</span>', 'Einsteigerfreundlich · mit Bildern und Ansage');
+  out += `<div class="card"><h2>Vorschlag</h2><button class="prog-card" data-a="yprog" data-id="${sp.id}"><span class="pi">${sp.icon}</span><span class="grow"><b>${sp.n}</b><br><span class="dim">${sug.why}</span></span><span class="go">›</span></button></div>`;
+  out += `<div class="card"><h2>Einstellungen</h2>${durChips}<div class="sp"></div>
+    <div class="seg"><button data-a="ytravel" data-v="0" class="${!y.travel ? 'on' : ''}">🧘 Mit Matte</button><button data-a="ytravel" data-v="1" class="${y.travel ? 'on' : ''}">🎒 Unterwegs</button></div>
+    <div class="toggle" style="margin-top:8px"><span class="muted">Zu zweit mit Jenny</span><button class="sw ${y.duo ? 'on' : ''}" data-a="yduo"></button></div>
+    <div class="toggle"><span class="muted">Sprachansage</span><button class="sw ${yTts() ? 'on' : ''}" data-a="ytts"></button></div>
+    ${y.travel ? '<div class="dim" style="margin-top:4px">Unterwegs werden Matten-Übungen durch Varianten im Stehen oder Sitzen ersetzt.</div>' : ''}</div>`;
+  for (const th of THEMES) {
+    const ps = PROGRAMS.filter(p => p.theme === th.id);
+    out += `<div class="week">${th.n}</div>` + ps.map(p => `<button class="prog-card card" data-a="yprog" data-id="${p.id}"><span class="pi">${p.icon}</span><span class="grow"><b>${p.n}</b> <span class="badge">${p.style}</span>${p.travel ? ' <span class="badge">ohne Matte</span>' : ''}<br><span class="dim">${p.desc}</span></span><span class="go">›</span></button>`).join('');
+  }
+  const c = y.custom;
+  out += `<div class="week">Eigenes Set</div><div class="card"><h2>Baukasten</h2>
+    <div class="dim" style="margin-bottom:6px">Fokus (mehrere möglich)</div>
+    <div class="chips">${Object.entries(FOCUS).map(([k, f]) => `<button class="chip small ${c.focus.includes(k) ? 'on' : ''}" data-a="yfocus" data-v="${k}">${f.n}</button>`).join('')}</div>
+    <div class="sp"></div><div class="seg"><button data-a="ystyle" data-v="ruhig" class="${c.style === 'ruhig' ? 'on' : ''}">Ruhig halten</button><button data-a="ystyle" data-v="fließend" class="${c.style === 'fließend' ? 'on' : ''}">Fließend</button></div>
+    <div class="sp"></div><div class="seg">${[['m', 'Matte'], ['st', 'Stehen'], ['si', 'Sitzen']].map(([k, l]) => `<button data-a="yplace" data-v="${k}" class="${c.place === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+    <button class="btn yoga block" style="margin-top:12px" data-a="yprog" data-id="custom">Zusammenstellen</button></div>`;
+  const recent = doneEntries(S).filter(e => e.format === 'yoga').slice(0, 4);
+  if (recent.length) out += `<div class="week">Zuletzt</div>${recent.map(histCard).join('')}`;
+  return out;
+}
+
+function viewYogaPreview() {
+  const s = currentYoga();
+  const total = planSeconds(s.plan);
+  const nd = needs(s.plan, s.travel);
+  let out = header(esc(s.name), `${Math.round(total / 60)} min · ${s.style} · ${s.plan.length} Positionen${ui.y.duo ? ' · zu zweit' : ''}`, `<button class="iconbtn" data-a="nav" data-v="yoga">‹</button>`);
+  out += `<div class="chips" style="margin:4px 0 8px">${DURS.map(d => `<button class="chip ${yDur() === d ? 'on' : ''}" data-a="ydur" data-v="${d}">${d} min</button>`).join('')}</div>`;
+  if (nd.length) out += `<div class="note">Du brauchst: ${nd.join(' · ')}</div>`;
+  out += `<div class="card ylist">${s.plan.map((it, i) => {
+    const p = POSE[it.id];
+    return `<div class="yrow">${poseSVG(p, 'thumb')}<div class="grow"><b>${i + 1}. ${esc(p.n)}</b>${it.rep ? ' <span class="dim">· 2. Runde</span>' : ''}${p.partner ? ' <span class="badge" style="color:var(--jenny)">zu zweit</span>' : ''}<br><span class="dim">${holdText(it)}${p.side ? ' · pro Seite' : ''}${p.dyn ? ' · in Bewegung' : ''}</span></div>${infoBtnY(p.id)}</div>`;
+  }).join('')}</div>`;
+  out += `<button class="btn yoga block" data-a="ystart">▶ Start (${Math.round(total / 60)} min)</button>
+    <div class="dim" style="text-align:center;margin-top:8px">Sprachansage ${yTts() ? 'an' : 'aus'} · Bildschirm bleibt an</div><div style="height:30px"></div>`;
+  return out;
+}
+const infoBtnY = id => `<button class="infobtn" data-a="yinfo" data-id="${id}" title="Erklärung">i</button>`;
+
+function viewYogaEntry(e) {
+  const y = e.yoga || {};
+  let out = header(`🧘 ${esc(y.name || 'Yoga')}`, `${fmtDate(e.ts)} · ${fmtTime(e.ts)} · ${Math.round((y.sec || 0) / 60)} min${e.duo ? ' · mit Jenny' : ''}`, `<button class="iconbtn" data-a="nav" data-v="hist">‹</button>`);
+  out += `<div class="card ylist">${[...new Set(y.poses || [])].filter(id => POSE[id]).map(id => `<div class="yrow">${poseSVG(POSE[id], 'thumb')}<div class="grow"><b>${esc(POSE[id].n)}</b><br><span class="dim">${POSE[id].tags.map(t => TAGS[t]).join(', ')}</span></div>${infoBtnY(id)}</div>`).join('')}</div>`;
+  if (y.prog) out += `<button class="btn yoga block" data-a="yagain">Nochmal machen</button><div class="sp"></div>`;
+  out += `<button class="btn danger block" data-a="ydel">Eintrag löschen</button>`;
+  return out;
+}
+
+function openPoseInfo(id) {
+  const p = POSE[id];
+  const el = document.createElement('div');
+  el.className = 'sheet-bg info'; el.dataset.a = 'infobg';
+  el.innerHTML = `<div class="sheet"><div class="sh"><div class="grab"></div>
+    <div class="row"><div class="grow"><div class="pat">${p.place.map(x => PLACES[x]).join(' / ')}${p.side ? ' · pro Seite' : ''}${p.partner ? ' · zu zweit' : ''}</div><b style="font-size:19px">${esc(p.n)}</b></div><button class="iconbtn" data-a="infoclose">✕</button></div></div>
+    <div class="sb"><div class="yinfo-fig">${poseSVG(p)}</div>
+      <div class="chips" style="justify-content:center;margin:4px 0 10px">${p.tags.map(t => `<span class="chip small on">${TAGS[t]}</span>`).join('')}</div>
+      <h3>So geht's</h3><p>${esc(p.d)}</p>
+      ${p.easy ? `<h3>Für Einsteiger</h3><p>${esc(p.easy)}</p>` : ''}
+      ${p.prop ? `<h3>Hilfsmittel</h3><p>${esc(p.prop)}</p>` : ''}
+      ${p.steps ? `<h3>Ablauf</h3><ol class="steps">${p.steps.map(([sid, t, b]) => `<li>${esc(t)} <span class="dim">(${POSE[sid].n})</span></li>`).join('')}</ol>` : ''}
+      <div style="height:16px"></div></div></div>`;
+  document.body.appendChild(el);
+}
+
+function yogaPhases(s) {
+  const ph = [];
+  const first = POSE[s.plan[0].id];
+  ph.push({ label: 'Gleich geht’s los', what: first.n, desc: first.d, img: poseSVG(first.flow ? POSE[first.steps[0][0]] : first, 'big'), sec: 8, kind: 'plain', say: `${s.name}. Los geht's mit: ${first.n}.` });
+  s.plan.forEach((it, k) => {
+    const p = POSE[it.id], nx = s.plan[k + 1] ? POSE[s.plan[k + 1].id] : null;
+    const base = { what: p.n, kind: 'yoga', next: nx ? nx.n : 'Fertig' };
+    if (p.flow) {
+      for (let r = 0; r < it.rounds; r++) p.steps.forEach(([sid, txt, b], j) => {
+        const sp = POSE[sid];
+        ph.push({ ...base, label: `${p.n} · Runde ${r + 1}/${it.rounds}`, desc: txt, img: poseSVG(sp, 'big'), sec: b * BREATH, quiet: true, say: j === 0 && r === 0 ? `${p.n}. ${txt}` : txt });
+      });
+    } else if (p.side) {
+      ph.push({ ...base, label: `${p.n} · erste Seite`, desc: p.d, img: poseSVG(p, 'big'), sec: it.hold, say: `${p.n}. ${p.cue}` });
+      ph.push({ ...base, label: 'Seite wechseln', desc: 'Langsam lösen und zur anderen Seite wechseln.', img: poseSVG(p, 'big flip'), sec: SWITCH, kind: 'plain', quiet: true, say: 'Seite wechseln.' });
+      ph.push({ ...base, label: `${p.n} · zweite Seite`, desc: p.d, img: poseSVG(p, 'big flip'), sec: it.hold, say: 'Andere Seite.' });
+    } else {
+      ph.push({ ...base, label: p.n + (it.rep ? ' · 2. Runde' : ''), desc: p.d, img: poseSVG(p, 'big'), sec: it.hold, say: `${p.n}. ${p.cue}` });
+    }
+    if (nx) {
+      const nimg = nx.flow ? POSE[nx.steps[0][0]] : nx;
+      ph.push({ label: 'Nächste Position', what: nx.n, desc: nx.easy ? 'Tipp: ' + nx.easy : '', img: poseSVG(nimg, 'big'), sec: TRANS, kind: 'plain', quiet: true, say: `Als Nächstes: ${nx.n}.` });
+    }
+  });
+  return ph;
+}
+
+function startYoga() {
+  const s = currentYoga();
+  const ph = yogaPhases(s);
+  const start = Date.now();
+  const tts = yTts();
+  if (tts) speak(ph[0].say); // im Klick starten (iOS)
+  runTimer(ph, {
+    title: '🧘', soft: true,
+    onPhase: (p, i) => { if (tts && i > 0) speak(p.say); },
+    onDone: (completed, elapsed) => {
+      if (tts) { if (completed) speak('Fertig. Schön gemacht.'); else stopSpeak(); }
+      if (elapsed < 60) { toast('Nicht gespeichert (unter 1 Minute)'); return; }
+      const poses = s.plan.map(x => x.id);
+      S.entries.unshift({ id: uid(), ts: start, end: Date.now(), updatedAt: Date.now(), done: true, format: 'yoga', duo: ui.y.duo, mode: s.travel ? 'travel' : 'home', blocks: [],
+        yoga: { prog: s.id, name: s.name, min: s.min, sec: elapsed, poses, custom: s.id === 'custom' ? { ...ui.y.custom } : undefined } });
+      persist(); toast(completed ? 'Yoga eingetragen 🧘' : 'Teilweise eingetragen'); ui.view = 'yoga'; render(); scrollTo(0, 0);
+    }
+  });
+}
+
 // ── Events ───────────────────────────────────────────────
 function P(el) { const d = el.dataset; return { bi: +d.bi, ii: +d.ii, who: d.who, ri: +d.ri, dir: +d.d, v: d.v, i: +d.i, id: d.id, k: d.k }; }
 
@@ -511,7 +713,7 @@ document.addEventListener('click', ev => {
     case 'nav': ui.view = x.v; ui.editId = null; closeSheet(); render(); scrollTo(0, 0); return;
     case 'new': { const d = draft(false) || newEntry(false); ui.view = 'edit'; ui.editId = d.id; render(); scrollTo(0, 0); return; }
     case 'newduo': { const d = draft(true) || newEntry(true); ui.view = 'edit'; ui.editId = d.id; render(); scrollTo(0, 0); return; }
-    case 'open': ui.view = 'edit'; ui.editId = x.id; render(); scrollTo(0, 0); return;
+    case 'open': ui.view = entry(x.id)?.format === 'yoga' ? 'yogaentry' : 'edit'; ui.editId = x.id; render(); scrollTo(0, 0); return;
     case 'closeedit': ui.view = 'hist'; ui.editId = null; persist(); render(); return;
     case 'tipsall': ui.tips = !ui.tips; render(); return;
     case 'more': ui.more.has(x.k) ? ui.more.delete(x.k) : ui.more.add(x.k); render(); return;
@@ -520,6 +722,20 @@ document.addEventListener('click', ev => {
     case 'pgrp': ui.sheet.grp = x.v; ui.sheet.q = ''; const sq = $('#sq'); if (sq) sq.value = ''; renderSheet(); $('#sbody').scrollTop = 0; return;
     case 'pickx': applyPick(x.id); return;
     case 'syncnow': doSync(true); return;
+    // Yoga
+    case 'duoyoga': ui.y.duo = true; ui.view = 'yoga'; render(); scrollTo(0, 0); return;
+    case 'ydur': S.settings.yogaDur = +x.v; S.settings.updatedAt = Date.now(); persist(); render(); return;
+    case 'ytravel': ui.y.travel = x.v === '1'; render(); return;
+    case 'yduo': ui.y.duo = !ui.y.duo; render(); return;
+    case 'ytts': S.settings.yogaTts = !yTts(); S.settings.updatedAt = Date.now(); persist(); if (yTts()) speak('Sprachansage an.'); render(); return;
+    case 'yfocus': { const f = ui.y.custom.focus; ui.y.custom.focus = f.includes(x.v) ? f.filter(k => k !== x.v) : [...f, x.v]; render(); return; }
+    case 'ystyle': ui.y.custom.style = x.v; render(); return;
+    case 'yplace': ui.y.custom.place = x.v; render(); return;
+    case 'yprog': ui.y.prog = x.id; ui.view = 'yogaprev'; render(); scrollTo(0, 0); return;
+    case 'yinfo': openPoseInfo(x.id); return;
+    case 'ystart': startYoga(); return;
+    case 'yagain': { const en = entry(ui.editId); const y = en.yoga; if (y.custom) ui.y.custom = { ...y.custom }; ui.y.prog = y.prog; ui.y.duo = !!en.duo; ui.y.travel = en.mode === 'travel' && y.prog !== 'custom'; S.settings.yogaDur = y.min || yDur(); ui.view = 'yogaprev'; render(); scrollTo(0, 0); return; }
+    case 'ydel': { if (!confirm('Eintrag löschen?')) return; const en = entry(ui.editId); en.deleted = true; en.updatedAt = Date.now(); persist(); ui.view = 'hist'; ui.editId = null; render(); return; }
   }
   if (a === 'zone' || el.classList?.contains('z')) return;
 
