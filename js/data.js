@@ -25,6 +25,25 @@ export const PATTERNS = {
 };
 export const MAIN_PATTERNS = ['knee', 'hip', 'hpush', 'vpush', 'hpull', 'vpull', 'core'];
 
+// Muskelgruppen für „heute nur …“
+export const GROUPS = {
+  beine: { n: 'Beine & Po', zones: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors'] },
+  brust: { n: 'Brust', zones: ['chest'] },
+  ruecken: { n: 'Rücken', zones: ['lats', 'upperback', 'lowerback', 'traps'] },
+  schultern: { n: 'Schultern', zones: ['shoulders'] },
+  arme: { n: 'Arme', zones: ['biceps', 'triceps', 'forearms'] },
+  rumpf: { n: 'Bauch & Rumpf', zones: ['abs', 'obliques'] }
+};
+export const PATTERN_GROUP = { knee: 'beine', hip: 'beine', hpush: 'brust', vpush: 'schultern', hpull: 'ruecken', vpull: 'ruecken', core: 'rumpf', cardio: 'beine' };
+export const FOCUS_PRESETS = [
+  { n: 'Ganzkörper', g: ['beine', 'brust', 'ruecken', 'schultern', 'arme', 'rumpf'] },
+  { n: 'Oberkörper', g: ['brust', 'ruecken', 'schultern', 'arme', 'rumpf'] },
+  { n: 'Unterkörper', g: ['beine', 'rumpf'] },
+  { n: 'Rumpf & Arme', g: ['arme', 'rumpf'] },
+  { n: 'Push', g: ['brust', 'schultern', 'arme'] },
+  { n: 'Pull', g: ['ruecken', 'arme'] }
+];
+
 export const REGIONS = {
   legs: 'Beine & Gesäß', chest: 'Brust & Trizeps', back: 'Rücken', shoulders: 'Schultern',
   arms: 'Arme', core: 'Bauch & Rumpf', cardio: 'Cardio & Ganzkörper'

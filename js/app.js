@@ -1,4 +1,4 @@
-import { EX, EXERCISES, PATTERNS, MAIN_PATTERNS, REGIONS, VARIANTS, AVAIL, ZONES, FORMATS, WARMUP_GENERAL, STRETCHES } from './data.js';
+import { GROUPS, FOCUS_PRESETS, EX, EXERCISES, PATTERNS, MAIN_PATTERNS, REGIONS, VARIANTS, AVAIL, ZONES, FORMATS, WARMUP_GENERAL, STRETCHES } from './data.js';
 import { IMPL_TYPES, variantPossible, isLoaded, weightOptions, stepOption, nearestOption, plateText, blockFeasible, fmtKg, clearCache, DEFAULT_EQUIPMENT } from './equip.js';
 import { buildPlan, suggestFormat, todaySummary, zoneStatus, glow, agoText, lastPerf, lastVariant, makePerson, doneEntries, progression } from './plan.js';
 import { bodySVG, paintBody, stretchSVG } from './body.js';
@@ -75,7 +75,7 @@ function newEntry(duo) {
 }
 function regenerate(e, patch = {}) {
   Object.assign(e, patch);
-  const plan = buildPlan(S, eqp(), { format: e.format, mode: e.mode, duo: e.duo, runSoon: e.runSoon });
+  const plan = buildPlan(S, eqp(), { format: e.format, mode: e.mode, duo: e.duo, runSoon: e.runSoon, focus: e.focus || null });
   e.blocks = plan.blocks; e.notes = plan.notes; e.warn = plan.warn; e.hiit = plan.hiit;
   e.touched = false; e.updatedAt = Date.now();
 }
@@ -191,6 +191,9 @@ function viewEditor(e) {
       <div class="sp"></div>
       <div class="seg"><button data-a="mode" data-v="home" class="${e.mode !== 'travel' ? 'on' : ''}">🏠 Zuhause</button><button data-a="mode" data-v="travel" class="${e.mode === 'travel' ? 'on' : ''}">🎒 Unterwegs</button></div>
       <div class="toggle" style="margin-top:8px"><span class="muted">Lauf heute oder morgen geplant</span><button class="sw ${e.runSoon ? 'on' : ''}" data-a="run"></button></div>
+      <div class="dim" style="margin:10px 0 6px">Muskelgruppen heute</div>
+      <div class="chips scroll">${FOCUS_PRESETS.map(fp => `<button class="chip small ${sameSet(e.focus || Object.keys(GROUPS), fp.g) ? 'on' : ''}" data-a="fpreset" data-v="${fp.n}">${fp.n}</button>`).join('')}</div>
+      <div class="chips groups" style="margin-top:8px">${Object.entries(GROUPS).map(([k, g]) => { const on = !e.focus || e.focus.includes(k); return `<button class="chip ${on ? 'on' : 'off'}" data-a="fgroup" data-v="${k}">${on ? '✓' : '✕'} ${g.n}</button>`; }).join('')}</div>
       ${sum.last ? `<div class="dim" style="margin-top:6px">Zuletzt: ${fmtDate(sum.last.ts)} (${agoText(sum.last.ts)}) · ${FORMATS[sum.last.format].n}</div>` : ''}
       ${e.warn ? `<div class="note warn">${esc(e.warn)}</div>` : ''}
       ${(e.notes || []).map(n => `<div class="note">${esc(n)}</div>`).join('')}
@@ -222,6 +225,7 @@ function viewEditor(e) {
   return out + '<div style="height:40px"></div>';
 }
 
+const sameSet = (a, b) => a.length === b.length && a.every(x => b.includes(x));
 function stepper(a, label, attrs = '', cls = '') {
   return `<span class="stepper ${cls}"><button data-a="${a}" data-d="-1" ${attrs}>−</button><span class="v">${label}</span><button data-a="${a}" data-d="1" ${attrs}>+</button></span>`;
 }
@@ -748,6 +752,14 @@ document.addEventListener('click', ev => {
         regenerate(e, { format: x.v }); persist(); render(); return;
       case 'mode': S.settings.lastMode = x.v; regenerate(e, { mode: x.v }); if (x.v === 'travel' && e.format === 'kb') regenerate(e, { format: 'k3' }); persist(); render(); return;
       case 'run': regenerate(e, { runSoon: !e.runSoon }); persist(); render(); return;
+      case 'fpreset': case 'fgroup': {
+        let f = e.focus ? e.focus.slice() : Object.keys(GROUPS);
+        if (a === 'fpreset') f = FOCUS_PRESETS.find(fp => fp.n === x.v).g.slice();
+        else f = f.includes(x.v) ? f.filter(g => g !== x.v) : [...f, x.v];
+        if (!f.length) return toast('Mindestens eine Muskelgruppe auswählen');
+        if (e.touched && !confirm('Vorschlag für die neue Auswahl erstellen? Deine Änderungen an den Sets gehen verloren.')) return;
+        regenerate(e, { focus: f.length === Object.keys(GROUPS).length ? null : f }); persist(); render(); return;
+      }
       case 'regen': if (e.touched && !confirm('Neu vorschlagen? Deine Änderungen gehen verloren.')) return; regenerate(e); persist(); render(); return;
       case 'warm': e.warmup.type = x.v; touch(e); render(); return;
       case 'warmmin': e.warmup.min = Math.max(1, e.warmup.min + x.dir); touch(e); render(); return;

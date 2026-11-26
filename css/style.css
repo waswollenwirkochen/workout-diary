@@ -244,3 +244,5 @@ button.prog-card.card { margin: 8px 0; }
 .hist.ycard { border-left: 3px solid var(--teal); }
 nav.tabs button { font-size: 10.5px; }
 nav.tabs button.on.t-yoga { color: var(--teal); }
+
+.chips.groups .chip.off { color: var(--tx3); text-decoration: line-through; opacity: .75; }

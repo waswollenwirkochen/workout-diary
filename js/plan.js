@@ -1,5 +1,5 @@
 // Auswertung der Historie + Trainingsempfehlung
-import { EX, EXERCISES, PATTERNS, MAIN_PATTERNS, FORMATS, ZONES } from './data.js';
+import { EX, EXERCISES, PATTERNS, MAIN_PATTERNS, FORMATS, ZONES, GROUPS, PATTERN_GROUP } from './data.js';
 import { variantPossible, isLoaded, weightOptions, nearestOption, stepOption, units, blockFeasible } from './equip.js';
 
 const H = 3600e3, DAY = 24 * H;
@@ -146,12 +146,22 @@ function typeOk(ex, format) {
   return true;
 }
 
-export function candidates(state, eq, { pattern, format, mode, duo, who = 'e', usedEx = new Set() }) {
+// Erlaubt die Fokus-Auswahl diese Übung? Hauptmuskeln dürfen nicht in einer abgewählten Gruppe liegen.
+// Bei Grundübungen zählen Arme nur als Helfer (Liegestütz bleibt erlaubt, auch wenn „Arme“ abgewählt ist).
+const ARM = new Set(['biceps', 'triceps', 'forearms']);
+export function exAllowed(ex, focus) {
+  if (!focus) return true;
+  const forbidden = new Set(Object.keys(GROUPS).filter(g => !focus.includes(g)).flatMap(g => GROUPS[g].zones));
+  const prim = Object.keys(ex.m).filter(z => ex.m[z] >= 1).filter(z => ex.p === 'iso' || !ARM.has(z));
+  if (ex.p !== 'iso' && !focus.includes(PATTERN_GROUP[ex.p])) return false;
+  return prim.length > 0 && prim.every(z => !forbidden.has(z));
+}
+export function candidates(state, eq, { pattern, format, mode, duo, who = 'e', usedEx = new Set(), focus = null }) {
   const u = usage(state, who);
   const last = doneEntries(state).find(e => e.format === format);
   const lastSet = new Set(); if (last) for (const b of last.blocks) for (const it of b.items) if (it[who]) lastSet.add(it[who].ex);
   const histDistinct = EXERCISES.filter(e => e.p === pattern && u[e.id]).length;
-  return EXERCISES.filter(ex => (pattern ? ex.p === pattern : true) && typeOk(ex, format) && (duo || !needsPartner(ex)) && !usedEx.has(ex.id)
+  return EXERCISES.filter(ex => (pattern ? ex.p === pattern : true) && typeOk(ex, format) && (duo || !needsPartner(ex)) && !usedEx.has(ex.id) && exAllowed(ex, focus)
     && ex.v.some(v => variantOk(eq, ex, v, mode, format)))
     .map(ex => {
       let s = (ex.pref || 0) / 2 + (ex.star ? 1 : 0) + Math.min(6, 2 * (u[ex.id] || 0));
@@ -221,7 +231,8 @@ export function suggestFormat(state, now = Date.now(), mode = 'home') {
 }
 
 // Hauptfunktion: kompletten Eintrag vorbefüllen
-export function buildPlan(state, eq, { format, mode = 'home', duo = false, runSoon = false, now = Date.now() }) {
+export function buildPlan(state, eq, { format, mode = 'home', duo = false, runSoon = false, focus = null, now = Date.now() }) {
+  if (focus && focus.length >= Object.keys(GROUPS).length) focus = null;
   const F = FORMATS[format];
   const zs = zoneStatus(state, now, 'e');
   const ps = patternStats(state, now, 'e');
@@ -239,19 +250,29 @@ export function buildPlan(state, eq, { format, mode = 'home', duo = false, runSo
   let warn = null;
   if (nBlocked >= 4) { warn = 'Fast alle Muskelgruppen sind noch in Erholung (< 48 h). Heute lieber laufen, Mobility oder Pause – oder bewusst leicht trainieren.'; for (const k in blocked) delete blocked[k]; }
   let lowerKept = 0;
+  const pAllowed = p => !focus || (p === 'iso' ? ['arme', 'schultern', 'beine'].some(g => focus.includes(g)) : focus.includes(PATTERN_GROUP[p]));
+  const isoOk = pAllowed('iso');
+  const pickAlt = (p, block) => {
+    const pool = MAIN_PATTERNS.filter(q => q !== p && !blocked[q] && pAllowed(q) && !(runSoon && PATTERNS[q].lower)).concat(isoOk ? ['iso'] : []);
+    if (!pool.length) return 'core';
+    return pool.sort((a, b) => ((count[a] || 0) - (count[b] || 0)) || ((block.includes(a) ? 1 : 0) - (block.includes(b) ? 1 : 0)) || (due(b) - due(a)))[0];
+  };
+  const skippedFocus = new Set();
   slots = slots.map(block => block.map(p => {
     const lower = PATTERNS[p]?.lower;
     let reason = null;
+    if (!pAllowed(p)) { skippedFocus.add(p); const alt = pickAlt(p, block); count[p]--; count[alt] = (count[alt] || 0) + 1; return alt; }
     if (blocked[p]) reason = `${ZONES[blocked[p].z]} noch in Erholung (${agoText(blocked[p].ts, now)})`;
     else if (runSoon && lower && format !== 'kb') { if (lowerKept >= 1) reason = 'Lauf geplant – Beine heute nur 1×'; else lowerKept++; }
     if (!reason) return p;
-    const alt = MAIN_PATTERNS.filter(q => q !== p && !blocked[q] && !PATTERNS[q].lower && (count[q] || 0) < 2 && !block.includes(q))
-      .sort((a, b) => due(b) - due(a))[0] || 'iso';
+    const alt = focus ? pickAlt(p, block) : (MAIN_PATTERNS.filter(q => q !== p && !blocked[q] && !PATTERNS[q].lower && (count[q] || 0) < 2 && !block.includes(q))
+      .sort((a, b) => due(b) - due(a))[0] || 'iso');
     count[alt] = (count[alt] || 0) + 1;
     notes.push(`${PATTERNS[p].n} → ${PATTERNS[alt].n}: ${reason}`);
     return alt;
   }));
 
+  if (focus) notes.unshift(`Heute nur: ${focus.map(g => GROUPS[g].n).join(', ')}`);
   const usedEx = { e: new Set(), j: new Set() };
   const built = [];
   const jFormat = format === 'kb' ? 'k3' : format; // Jenny hat im KB-Circuit keine eigene KB
@@ -261,7 +282,10 @@ export function buildPlan(state, eq, { format, mode = 'home', duo = false, runSo
     const items = [];
     for (const p of block) {
       let pattern = p;
-      let list = candidates(state, eq, { pattern, format, mode, duo, usedEx: usedEx.e });
+      let list = candidates(state, eq, { pattern, format, mode, duo, usedEx: usedEx.e, focus });
+      if (!list.length && focus) { // nichts Passendes für dieses Muster → anderes erlaubtes Muster
+        for (const q of ['core', ...MAIN_PATTERNS, 'iso']) { if (!pAllowed(q)) continue; const l2 = candidates(state, eq, { pattern: q, format, mode, duo, usedEx: usedEx.e, focus }); if (l2.length) { pattern = q; list = l2; break; } }
+      }
       if (pattern === 'iso') {
         // Isolation: Zone mit längster Pause bevorzugen, Arme abwechseln
         list = list.map(c => {
@@ -289,7 +313,7 @@ export function buildPlan(state, eq, { format, mode = 'home', duo = false, runSo
             let vj = pickVariant(state, eq, 'j', c.ex, mode, jFormat, usedTmp, cap, c.ex.v.filter(v => jOrder.includes(v)));
             if (!vj && needsPartner(c.ex)) continue;
             if (!vj) {
-              for (const c2 of candidates(state, eq, { pattern, format: jFormat, mode, duo: false, who: 'j', usedEx: usedEx.j })) {
+              for (const c2 of candidates(state, eq, { pattern, format: jFormat, mode, duo: false, who: 'j', usedEx: usedEx.j, focus })) {
                 if (c2.ex.partner && c2.ex.id !== 'nordic') continue;
                 const v2 = pickVariant(state, eq, 'j', c2.ex, mode, jFormat, usedTmp, cap, c2.ex.v.filter(v => jOrder.includes(v)));
                 if (v2) { jex = c2.ex; vj = v2; break; }
